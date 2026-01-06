@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Digraph Game</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body {
+  font-family: system-ui, sans-serif;
+  text-align: center;
+  padding: 20px;
+}
+
+button {
+  font-size: 18px;
+  padding: 10px 20px;
+  border: 3px solid #000;
+  border-radius: 12px;
+  background: #fff;
+  cursor: pointer;
+  margin-bottom: 20px;
+}
+
+.game {
+  max-width: 700px;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.card {
+  display: grid;
+  grid-template-columns: 140px 120px 1fr;
+  align-items: center;
+  gap: 16px;
+  border: 3px solid #000;
+  border-radius: 20px;
+  padding: 16px;
+}
+
+.card.correct {
+  background: #eaffea;
+  border-color: #2e7d32;
+}
+
+img {
+  width: 130px;
+  cursor: pointer;
+}
+
+.word {
+  font-size: 28px;
+  font-weight: bold;
+}
+
+.choices {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.choice {
+  border: 3px solid #000;
+  border-radius: 12px;
+  padding: 10px 16px;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.choice.correct { background: #9eff9e; }
+.choice.wrong   { background: #ffb3b3; }
+
+@keyframes jiggle {
+  0% { transform: rotate(0); }
+  25% { transform: rotate(-5deg); }
+  50% { transform: rotate(5deg); }
+  75% { transform: rotate(-5deg); }
+  100% { transform: rotate(0); }
+}
+
+.jiggle {
+  animation: jiggle 0.35s;
+}
+</style>
+</head>
+
+<body>
+
+<button id="shuffleBtn">Shuffle</button>
+
+<div class="game">
+
+  <div class="card" data-answer="ow" data-word="cow">
+    <img src="cow.png">
+    <div class="word">c _ _</div>
+    <div class="choices">
+      <div class="choice">ar</div>
+      <div class="choice">or</div>
+      <div class="choice">ow</div>
+    </div>
+  </div>
+
+  <div class="card" data-answer="ar" data-word="car">
+    <img src="car.png">
+    <div class="word">c _ _</div>
+    <div class="choices">
+      <div class="choice">ar</div>
+      <div class="choice">or</div>
+      <div class="choice">ow</div>
+    </div>
+  </div>
+
+  <div class="card" data-answer="or" data-word="corn">
+    <img src="corn.png">
+    <div class="word">c _ _ n</div>
+    <div class="choices">
+      <div class="choice">ar</div>
+      <div class="choice">or</div>
+      <div class="choice">ow</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let correctCount = 0;
+let audioCtx = null;
+
+function initAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+}
+
+function playCorrectSound() {
+  initAudio();
+  const o1 = audioCtx.createOscillator();
+  const o2 = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o1.frequency.value = 1200;
+  o2.frequency.value = 1800;
+  g.gain.value = 0.15;
+  o1.connect(g); o2.connect(g); g.connect(audioCtx.destination);
+  o1.start(); o2.start();
+  o1.stop(audioCtx.currentTime + 0.15);
+  o2.stop(audioCtx.currentTime + 0.25);
+}
+
+function playWrongSound() {
+  initAudio();
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.frequency.value = 220;
+  g.gain.value = 0.2;
+  o.connect(g); g.connect(audioCtx.destination);
+  o.start();
+  o.stop(audioCtx.currentTime + 0.4);
+}
+
+function speak(word) {
+  const u = new SpeechSynthesisUtterance(word);
+  u.lang = "en-US";
+  u.rate = 0.85;
+  speechSynthesis.speak(u);
+}
+
+document.querySelectorAll("img").forEach(img => {
+  img.onclick = () => {
+    img.classList.remove("jiggle");
+    void img.offsetWidth;
+    img.classList.add("jiggle");
+    speak(img.closest(".card").dataset.word);
+  };
+});
+
+document.querySelectorAll(".choice").forEach(choice => {
+  choice.onclick = () => {
+    const card = choice.closest(".card");
+    if (card.classList.contains("correct")) return;
+
+    if (choice.textContent === card.dataset.answer) {
+      card.classList.add("correct");
+      choice.classList.add("correct");
+
+      const wordBox = card.querySelector(".word");
+      wordBox.textContent = card.dataset.word;
+
+      playCorrectSound();
+      correctCount++;
+
+      if (correctCount === 3) showCelebration();
+    } else {
+      choice.classList.add("wrong");
+      playWrongSound();
+    }
+  };
+});
+
+/* ===== 3問正解で大きなスマイリー ===== */
+function showCelebration() {
+  const smile = document.createElement("div");
+  smile.textContent = "😊";
+  smile.style.position = "fixed";
+  smile.style.left = "50%";
+  smile.style.top = "50%";
+  smile.style.transform = "translate(-50%, -50%) scale(0.5)";
+  smile.style.fontSize = "160px";
+  smile.style.zIndex = "9999";
+  smile.style.opacity = "0";
+  smile.style.pointerEvents = "none";
+
+  document.body.appendChild(smile);
+
+  // 出てくる
+  smile.animate(
+    [
+      { transform: "translate(-50%, -50%) scale(0.5)", opacity: 0 },
+      { transform: "translate(-50%, -50%) scale(1.2)", opacity: 1 },
+      { transform: "translate(-50%, -50%) scale(1)", opacity: 1 }
+    ],
+    { duration: 600, easing: "ease-out", fill: "forwards" }
+  );
+
+  // 消える
+  setTimeout(() => {
+    smile.animate(
+      [
+        { opacity: 1 },
+        { opacity: 0 }
+      ],
+      { duration: 500, fill: "forwards" }
+    );
+    setTimeout(() => smile.remove(), 500);
+  }, 1200);
+}
+
+document.getElementById("shuffleBtn").onclick = () => {
+  correctCount = 0;
+  const game = document.querySelector(".game");
+  [...game.children].sort(() => Math.random() - 0.5)
+    .forEach(card => {
+      card.classList.remove("correct");
+      card.querySelectorAll(".choice").forEach(c => c.classList.remove("correct","wrong"));
+      card.querySelector(".word").textContent =
+        card.dataset.word === "corn" ? "c _ _ n" : "c _ _";
+      game.appendChild(card);
+    });
+};
+</script>
+
+</body>
+</html>
