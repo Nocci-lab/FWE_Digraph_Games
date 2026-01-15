@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Phonics Game ow / oa / oe</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<style>
+body{
+  font-family: system-ui, sans-serif;
+  background:#fff;
+  padding:20px;
+  text-align:center;
+}
+
+#shuffleBtn{
+  font-size:18px;
+  padding:10px 18px;
+  margin-bottom:20px;
+  border:3px solid #000;
+  border-radius:12px;
+  background:#fff;
+  cursor:pointer;
+}
+
+.game{
+  max-width:720px;
+  margin:auto;
+  display:flex;
+  flex-direction:column;
+  gap:20px;
+}
+
+.card{
+  display:grid;
+  grid-template-columns:140px 140px 1fr;
+  align-items:center;
+  gap:16px;
+  border:3px solid #000;
+  border-radius:20px;
+  padding:16px;
+  background:#fff;
+}
+
+.card.correct{
+  background:#eaffea;
+  border-color:#2e7d32;
+}
+
+img{
+  width:130px;
+  cursor:pointer;
+}
+
+.word{
+  font-size:28px;
+  font-weight:bold;
+}
+
+.choices{
+  display:flex;
+  gap:12px;
+  justify-content:center;
+}
+
+.choice{
+  border:3px solid #000;
+  border-radius:12px;
+  padding:10px 16px;
+  font-size:20px;
+  cursor:pointer;
+}
+
+.choice.correct{ background:#9eff9e; }
+.choice.wrong{ background:#ffb3b3; }
+
+@keyframes jiggle{
+  0%{transform:rotate(0)}
+  25%{transform:rotate(-5deg)}
+  50%{transform:rotate(5deg)}
+  75%{transform:rotate(-5deg)}
+  100%{transform:rotate(0)}
+}
+.jiggle{ animation:jiggle .35s }
+
+#smiley{
+  position:fixed;
+  inset:0;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  font-size:120px;
+  background:rgba(255,255,255,.85);
+  z-index:999;
+}
+</style>
+</head>
+
+<body>
+
+<button id="shuffleBtn">🔀 Shuffle</button>
+
+<div class="game">
+
+  <!-- window -->
+  <div class="card" data-answer="ow" data-word="window" data-full="window">
+    <img src="window.png" alt="window">
+    <div class="word">wind _ _</div>
+    <div class="choices">
+      <div class="choice">ow</div>
+      <div class="choice">oa</div>
+      <div class="choice">oe</div>
+    </div>
+  </div>
+
+  <!-- toast -->
+  <div class="card" data-answer="oa" data-word="toast" data-full="toast">
+    <img src="toast.png" alt="toast">
+    <div class="word">t _ _ st</div>
+    <div class="choices">
+      <div class="choice">ow</div>
+      <div class="choice">oa</div>
+      <div class="choice">oe</div>
+    </div>
+  </div>
+
+  <!-- tiptoe -->
+  <div class="card" data-answer="oe" data-word="tiptoe" data-full="tiptoe">
+    <img src="tiptoe.png" alt="tiptoe">
+    <div class="word">tipt _ _</div>
+    <div class="choices">
+      <div class="choice">ow</div>
+      <div class="choice">oa</div>
+      <div class="choice">oe</div>
+    </div>
+  </div>
+
+</div>
+
+<div id="smiley">😊</div>
+
+<script>
+let audioCtx=null;
+function initAudio(){
+  if(!audioCtx){
+    audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+  }
+}
+
+function playCorrect(){
+  initAudio();
+  const o1=audioCtx.createOscillator();
+  const o2=audioCtx.createOscillator();
+  const g=audioCtx.createGain();
+  o1.frequency.value=1200;
+  o2.frequency.value=1800;
+  g.gain.value=.15;
+  o1.connect(g);o2.connect(g);g.connect(audioCtx.destination);
+  o1.start();o2.start();
+  o1.stop(audioCtx.currentTime+.15);
+  o2.stop(audioCtx.currentTime+.25);
+}
+
+function playWrong(){
+  initAudio();
+  const o=audioCtx.createOscillator();
+  const g=audioCtx.createGain();
+  o.frequency.value=220;
+  g.gain.value=.2;
+  o.connect(g);g.connect(audioCtx.destination);
+  o.start();
+  o.stop(audioCtx.currentTime+.4);
+}
+
+function speak(word){
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(word);
+  u.lang="en-US";
+  u.rate=.85;
+  speechSynthesis.speak(u);
+}
+
+document.querySelectorAll("img").forEach(img=>{
+  img.onclick=()=>{
+    initAudio();
+    img.classList.remove("jiggle");
+    void img.offsetWidth;
+    img.classList.add("jiggle");
+    speak(img.closest(".card").dataset.word);
+  };
+});
+
+let solved=0;
+document.querySelectorAll(".choice").forEach(btn=>{
+  btn.onclick=()=>{
+    initAudio();
+    const card=btn.closest(".card");
+    if(card.classList.contains("correct")) return;
+
+    if(btn.textContent===card.dataset.answer){
+      btn.classList.add("correct");
+      card.classList.add("correct");
+      card.querySelector(".word").textContent=card.dataset.full;
+      playCorrect();
+      solved++;
+      if(solved===3) showSmiley();
+    }else{
+      btn.classList.add("wrong");
+      playWrong();
+    }
+  };
+});
+
+function showSmiley(){
+  const s=document.getElementById("smiley");
+  s.style.display="flex";
+  setTimeout(()=>s.style.display="none",1200);
+}
+
+function shuffle(){
+  const game=document.querySelector(".game");
+  const cards=[...game.children];
+  cards.sort(()=>Math.random()-.5);
+  cards.forEach(c=>{
+    c.classList.remove("correct");
+    c.querySelectorAll(".choice").forEach(b=>b.classList.remove("correct","wrong"));
+    game.appendChild(c);
+  });
+  solved=0;
+}
+document.getElementById("shuffleBtn").onclick=shuffle;
+shuffle();
+</script>
+
+</body>
+</html>
